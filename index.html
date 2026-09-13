@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#172627" />
+  <meta name="description" content="노을진 도시, 끝없는 추격. 경찰을 피해 나만의 생존 기록을 세우는 로우폴리 드라이빙 게임." />
+  <title>REDLINE — 해가 지면, 추격이 시작된다.</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <canvas id="world" aria-label="노을빛 도시의 3D 드라이빙 게임"></canvas>
+  <div id="vignette"></div>
+  <main id="menu" class="screen">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="REDLINE 홈"><svg viewBox="0 0 38 38" fill="none"><path d="M5 29 17 6h8L13 29H5ZM19 29 31 6h5L24 29h-5Z" fill="currentColor"/><path d="M3 35h32" stroke="currentColor" stroke-width="2"/></svg><span>RED<br>LINE</span></a>
+      <nav><span class="edition">AN ENDLESS GETAWAY</span><button class="text-button" id="help-button">플레이 방법 <span>↗</span></button><button class="icon-button" id="sound-button" aria-label="소리 켜기" title="소리 켜기"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5Zm5 4 5 6m0-6-5 6"/></svg></button></nav>
+    </header>
+    <section class="hero">
+      <div class="eyebrow"><span class="live-dot"></span> THE CITY IS YOURS. FOR NOW.</div>
+      <h1>RED<br><span>LINE</span><span class="title-period">.</span></h1>
+      <div class="hero-subtitle">해가 지면, 추격이 시작된다.</div>
+      <p class="hero-copy">막다른 길은 없다. 멈추지만 않는다면.<br>경찰을 따돌리고, 가장 오래 살아남으세요.</p>
+      <button id="start-button" class="primary-button"><span class="play-triangle">▶</span> 추격 시작 <span class="button-arrow">↗</span></button>
+      <div class="start-caption"><kbd>ENTER</kbd> 로 시작 <span>·</span> 얼마나 오래 버틸 수 있나요?</div>
+    </section>
+    <div class="scene-label"><span class="live-dot"></span> LIVE FROM GOLDEN BAY <span class="label-line"></span><b>18:42</b></div>
+    <footer class="menu-bottom">
+      <button id="map-button" class="map-card" aria-label="골든 베이 맵 살펴보기"><div class="map-thumbnail"><svg viewBox="0 0 110 86"><path d="M0 62 110 12M0 82 110 32M20 0l42 86M57 0l41 86" stroke="#c0b7a0" stroke-width="6"/><path d="m0 55 110-50M2 86l108-49M12 0l43 86M67 0l41 80" stroke="#718585" stroke-width="1"/><circle cx="57" cy="46" r="6" fill="#ff7a43"/><circle cx="57" cy="46" r="12" fill="none" stroke="#ff7a43"/></svg></div><div><span class="small-label">01 / SELECTED DISTRICT</span><strong>골든 베이 <span>↗</span></strong><span class="map-description">해안 도심 · 자유 주행</span></div><span class="selected-check">✓</span></button>
+      <div class="personal-best"><span class="small-label">YOUR PERSONAL BEST</span><div><svg viewBox="0 0 24 24"><path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v3a4 4 0 0 0 5 4m7-7h4v3a4 4 0 0 1-5 4m-3 1v5m-4 3h8m-6-3h4"/></svg><strong id="menu-best">--:--<small>.---</small></strong></div><button id="records-button">내 기록 보기 <span>→</span></button></div>
+      <div class="bottom-note"><span class="small-label">ONE CITY. NO FINISH LINE.</span><p>끝은 오직 사이렌이 정한다.</p><span class="build-label">VOL. 01 &nbsp; / &nbsp; GOLDEN BAY</span></div>
+    </footer>
+    <div class="edge-footer"><span>LOW POLY. HIGH STAKES.</span><span>LOCAL RECORDS <i></i> V.1.0</span></div>
+  </main>
+  <section id="hud" class="screen hidden" aria-label="주행 정보">
+    <div class="hud-top"><div class="hud-brand">RED<span>LINE</span></div><div class="timer-block"><span class="small-label">SURVIVAL TIME</span><div id="timer">00:00<small>.000</small></div></div><button class="icon-button" id="pause-button" aria-label="일시정지">Ⅱ</button></div>
+    <div class="heat-panel"><span class="small-label">WANTED LEVEL <b id="level-number">01</b></span><div id="stars">★<span>★★★★★★★★★</span></div><p id="heat-description">도주 차량 발견 · 순찰차 2대</p><div class="heat-track"><div id="heat-progress"></div></div><span class="next-level" id="next-level">30초마다 추격 강도 증가</span></div>
+    <div id="announcement" class="announcement hidden"></div>
+    <div id="capture-warning" class="capture-warning hidden"><span>경찰 접근 · 속도를 높이세요</span><div><i id="capture-progress"></i></div></div>
+    <div class="hud-bottom"><div class="minimap-wrap"><canvas id="minimap" width="190" height="190" aria-label="도시 미니맵"></canvas><div><i></i> GOLDEN BAY <span>N ↑</span></div></div><div class="driving-hint"><kbd>W A S D</kbd> 운전 <span>·</span> <kbd>SPACE</kbd> 드리프트 <span>·</span> <kbd>SHIFT</kbd> 부스트 <span>·</span> <kbd>ESC</kbd> 일시정지</div><div class="speedometer"><div><strong id="speed">0</strong><span>KM/H</span></div><div class="boost-label"><span>NITRO</span><span id="nitro-percent">100%</span></div><div class="boost-track"><i id="boost-progress"></i></div></div></div>
+    <div id="touch-controls"><div><button data-key="arrowleft" aria-label="왼쪽 조향">◀</button><button data-key="arrowright" aria-label="오른쪽 조향">▶</button></div><div><button data-key=" " aria-label="드리프트">DRIFT</button><button data-key="shift" aria-label="부스트">N₂O</button><button data-key="arrowdown" aria-label="브레이크와 후진">↓</button><button data-key="arrowup" aria-label="가속">↑</button></div></div>
+  </section>
+  <div id="modal-backdrop" class="hidden"><section id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section></div>
+  <div id="loading"><div class="loading-sun">◒</div><strong>REDLINE</strong><span>도시에 노을이 내려앉는 중…</span></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
