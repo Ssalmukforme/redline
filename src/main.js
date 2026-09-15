@@ -3,6 +3,10 @@ import './style.css';
 import { createWorld } from './world.js';
 import { createPlayer, updatePlayer, updateCapture, formatTime, clamp, saveRecord, blocked, LIMIT } from './simulation.js';
 import { createPoliceBrain, difficulty, MAX_LEVEL, TACTICS } from './police.js';
+import { createRanking, escapeHtml } from './ranking.js';
+import { RANKING_GAME, RANKING_BOARD } from './ranking-boards.js';
+
+const ranking = createRanking(RANKING_GAME);
 
 const $ = id => document.getElementById(id);
 let world;
@@ -26,11 +30,47 @@ function openModal(html){modalReturn=document.activeElement;keys.clear();$('moda
 function closeModal(){ $('modal-backdrop').classList.add('hidden');$('modal').innerHTML='';modalReturn?.focus(); }
 const closeButton='<button class="modal-close" data-action="close" aria-label="닫기">×</button>';
 function help(){openModal(`${closeButton}<span class="modal-eyebrow">THE GETAWAY HANDBOOK</span><h2 id="modal-title" class="modal-title">DON’T GET CAUGHT.</h2><p class="modal-description">목표는 단 하나. 경찰에게 붙잡히기 전까지 최대한 오래 버티세요. 30초마다 수배 단계가 올라 경찰이 늘고, 빨라지고, 더 영리해집니다. 최고 단계는 10단계.</p><div class="control-row"><span>가속 / 브레이크 · 후진</span><span><kbd>W / S</kbd> &nbsp; <kbd>↑ / ↓</kbd></span></div><div class="control-row"><span>좌우 조향</span><span><kbd>A / D</kbd> &nbsp; <kbd>← / →</kbd></span></div><div class="control-row"><span>드리프트</span><kbd>SPACE</kbd></div><div class="control-row"><span>니트로 부스트 · 자동 충전</span><kbd>SHIFT</kbd></div><div class="control-row"><span>일시정지</span><kbd>ESC</kbd></div><p class="modal-description" style="margin-top:20px;margin-bottom:0">경찰이 가까이 붙으면 체포 게이지가 올라갑니다. 속도를 높이고 골목을 돌아 거리를 벌리세요. 터치 기기에서는 화면 아래 버튼으로 조작합니다.</p><div class="modal-actions"><button class="primary-button" data-action="start">좋아, 출발하자 <span>↗</span></button></div>`);}
-function showRecords(){openModal(`${closeButton}<span class="modal-eyebrow">LOCAL LEADERBOARD</span><h2 id="modal-title" class="modal-title">THE LONGEST RUN.</h2><p class="modal-description">이 브라우저의 생존 기록 TOP 10.<br>친구와 번갈아 플레이하며 최고 기록에 도전하세요.</p>${records.length?`<ol class="record-list">${records.map((r,i)=>`<li><b>${String(i+1).padStart(2,'0')}</b><span>${new Date(r.date).toLocaleDateString('ko-KR')}</span><strong>${formatTime(r.time)}</strong></li>`).join('')}</ol>`:'<p class="modal-description" style="padding:30px 0;text-align:center">아직 기록이 없어요.<br>첫 번째 도주자가 되어보세요.</p>'}<div class="modal-actions"><button class="primary-button" data-action="start">새 기록에 도전 <span>↗</span></button></div>`);}
+let recordsTab='global',recordsToken=0;
+const recordItem=(position,label,time,you=false)=>`<li class="${you?'you':''}"><b>${String(position).padStart(2,'0')}</b><span>${label}${you?'<em>YOU</em>':''}</span><strong>${formatTime(time)}</strong></li>`;
+function showRecords(tab=recordsTab){
+  // Switching tabs re-renders the open dialog; keep the element that opened it for focus return.
+  const reopening=!$('modal-backdrop').classList.contains('hidden'),returnTo=modalReturn,token=++recordsToken;recordsTab=tab;
+  openModal(`${closeButton}<span class="modal-eyebrow">LEADERBOARD</span><h2 id="modal-title" class="modal-title">THE LONGEST RUN.</h2><div class="record-tabs" role="tablist"><button type="button" role="tab" data-records-tab="global" aria-selected="${tab==='global'}">전체 랭킹</button><button type="button" role="tab" data-records-tab="local" aria-selected="${tab==='local'}">내 기록</button></div><p class="modal-description records-caption">${tab==='global'?'모든 플레이어의 최고 생존 기록.':'이 브라우저의 생존 기록 TOP 10.'}</p><div id="records-body"></div><p id="records-standing" class="records-standing"></p><div class="modal-actions"><button class="primary-button" data-action="start">새 기록에 도전 <span>↗</span></button></div>`);
+  if(reopening){modalReturn=returnTo;$('modal').querySelector(`[data-records-tab="${tab}"]`)?.focus();}
+  const body=$('records-body'),empty=text=>`<p class="modal-description records-empty">${text}</p>`;
+  if(tab==='local'){body.innerHTML=records.length?`<ol class="record-list">${records.map((r,i)=>recordItem(i+1,new Date(r.date).toLocaleDateString('ko-KR'),r.time)).join('')}</ol>`:empty('아직 기록이 없어요.<br>첫 번째 도주자가 되어보세요.');return;}
+  body.innerHTML=empty('전체 랭킹을 불러오는 중…');
+  ranking.board(RANKING_BOARD).then(data=>{
+    if(token!==recordsToken||!body.isConnected)return;
+    body.innerHTML=data.entries.length?`<ol class="record-list">${data.entries.map(e=>recordItem(e.rank,escapeHtml(e.name),e.value/1000,e.you)).join('')}</ol>`:empty('아직 전체 랭킹에 기록이 없어요.<br>첫 번째 도주자가 되어보세요.');
+    $('records-standing').textContent=data.you?`내 순위 ${data.you.rank}위 · 참가 ${data.total}명`:data.total?`참가 ${data.total}명`:'';
+  }).catch(error=>{if(token===recordsToken&&body.isConnected)body.innerHTML=empty(`${ranking.describeError(error)}<br>내 기록 탭에서 이 브라우저의 기록을 볼 수 있어요.`);});
+}
+const rankFormHtml=()=>`<form class="rank-form" id="rank-form"><label for="rank-name">전체 랭킹에 남길 이름</label><div><input id="rank-name" maxlength="16" autocomplete="nickname" value="${escapeHtml(ranking.getName('DRIVER'))}"><button type="submit" class="secondary-button" id="rank-submit">랭킹 등록</button></div><p id="rank-status" class="rank-status" role="status"></p><ol class="record-list rank-top" id="rank-top"></ol></form>`;
+function renderRankTop(fresh=false){
+  const list=$('rank-top');if(!list)return;
+  ranking.board(RANKING_BOARD,{fresh,limit:5}).then(data=>{if(list.isConnected)list.innerHTML=data.entries.map(e=>recordItem(e.rank,escapeHtml(e.name),e.value/1000,e.you)).join('');}).catch(()=>{});
+}
+function wireRankForm(time,level,topSpeed){
+  let submitted=false;renderRankTop();
+  $('rank-form').addEventListener('submit',async e=>{
+    e.preventDefault();if(submitted)return;
+    const button=$('rank-submit'),status=$('rank-status'),name=$('rank-name').value.trim()||'DRIVER';
+    ranking.setName(name);button.disabled=true;button.textContent='등록 중…';status.className='rank-status';status.textContent='전체 랭킹에 등록하는 중…';
+    try{
+      const {improved,standing}=await ranking.submit(RANKING_BOARD,{name,value:time*1000,meta:{level,topSpeedKmh:Math.round(topSpeed*3.6)}});
+      submitted=true;if(!button.isConnected)return;
+      button.textContent='등록됨';status.classList.add('ok');status.textContent=`전체 ${standing.rank}위 / ${standing.total}명${improved?' · 내 최고 기록 갱신':''}`;renderRankTop(true);
+    }catch(error){
+      if(!button.isConnected)return;
+      const blocked=error.code==='implausible_score';button.disabled=blocked;button.textContent=blocked?'등록 불가':'다시 등록';status.classList.add('error');status.textContent=ranking.describeError(error);
+    }
+  });
+}
 function showMap(){openModal(`${closeButton}<span class="modal-eyebrow">01 / SELECTED DISTRICT</span><h2 id="modal-title" class="modal-title">GOLDEN BAY.</h2><p class="modal-description">굽이진 해안 순환도로, 도심을 가르는 대로, 언덕 위 주택가.<br>노을진 도시 전체가 당신의 도주 경로입니다.</p><canvas class="map-preview" id="map-preview" width="700" height="440" aria-label="골든 베이 전체 지도"></canvas><div class="map-stats"><span>건물 ${city.buildings.length}채</span><span>해안 순환도로 · 언덕길</span><span>시간에 따른 난이도</span></div><div class="modal-actions"><button class="primary-button" data-action="start">이 도시에서 시작 <span>↗</span></button></div>`);drawMap($('map-preview'),true);}
 function pause(){if(state!=='playing'&&state!=='countdown')return;state='paused';keys.clear();openModal(`<span class="modal-eyebrow">TAKE A BREATHER</span><h2 id="modal-title" class="modal-title">STILL ON THE RUN.</h2><p class="modal-description">추격이 잠시 멈췄습니다. 준비되면 다시 달리세요.</p><div class="result-time">${formatTime(elapsed)}</div><div class="modal-actions"><button class="primary-button" data-action="resume">계속 달리기 <span>→</span></button><button class="secondary-button" data-action="restart">처음부터 다시</button><button class="secondary-button" data-action="menu">시작 화면으로</button></div>`);}
 function resume(){closeModal();keys.clear();state='playing';}
-function finish(){if(recordSaved)return;recordSaved=true;state='busted';keys.clear();const best=!records.length||elapsed>records[0].time;records=saveRecord(records,elapsed);try{localStorage.setItem('redline-records',JSON.stringify(records));}catch{storageAvailable=false;}updateBest();openModal(`<span class="modal-eyebrow">END OF THE ROAD</span><h2 id="modal-title" class="modal-title">BUSTED.</h2><p class="modal-description">이번 추격은 여기까지.<br>도시는 언제나 다음 도주를 기다립니다.</p>${best?'<div class="new-best">★ &nbsp; 새로운 최고 기록</div>':''}<div class="result-time">${formatTime(elapsed)}</div><div class="result-details">수배 단계 ${lastLevel} &nbsp; · &nbsp; 최고 속도 ${Math.round(maxSpeed*3.6)} km/h</div><p class="modal-description">${storageAvailable?'기록이 이 브라우저에 저장되었습니다.':'브라우저 저장이 제한되어 이번 탭에서만 기록을 유지합니다.'}</p><div class="modal-actions"><button class="primary-button" data-action="restart">한 번 더 달리기 <span>↗</span></button><button class="secondary-button" data-action="menu">시작 화면으로</button></div>`);}
+function finish(){if(recordSaved)return;recordSaved=true;state='busted';keys.clear();const best=!records.length||elapsed>records[0].time;records=saveRecord(records,elapsed);try{localStorage.setItem('redline-records',JSON.stringify(records));}catch{storageAvailable=false;}updateBest();openModal(`<span class="modal-eyebrow">END OF THE ROAD</span><h2 id="modal-title" class="modal-title">BUSTED.</h2><p class="modal-description">이번 추격은 여기까지.<br>도시는 언제나 다음 도주를 기다립니다.</p>${best?'<div class="new-best">★ &nbsp; 새로운 최고 기록</div>':''}<div class="result-time">${formatTime(elapsed)}</div><div class="result-details">수배 단계 ${lastLevel} &nbsp; · &nbsp; 최고 속도 ${Math.round(maxSpeed*3.6)} km/h</div><p class="modal-description">${storageAvailable?'기록이 이 브라우저에 저장되었습니다.':'브라우저 저장이 제한되어 이번 탭에서만 기록을 유지합니다.'}</p><div class="modal-actions"><button class="primary-button" data-action="restart">한 번 더 달리기 <span>↗</span></button><button class="secondary-button" data-action="menu">시작 화면으로</button></div>${rankFormHtml()}`);wireRankForm(elapsed,lastLevel,maxSpeed);}
 function removePolice(){for(const c of police){scene.remove(c.mesh);c.mesh.traverse(o=>{if(o.isMesh)o.geometry.dispose();});}police=[];}
 function addPolice(index){
   // Reinforcements arrive on a road node at a fair distance, never on top of another cruiser.
@@ -43,13 +83,15 @@ function reset(){player=createPlayer(city.spawn);elapsed=0;maxSpeed=0;lastLevel=
 function start(){closeModal();reset();state='countdown';countdown=2.5;$('menu').classList.add('hidden');$('hud').classList.remove('hidden');$('vignette').style.opacity='0';if(soundEnabled)setupAudio();announce('엔진을 깨우세요. 곧 추격이 시작됩니다.',2.5);updateHud();}
 function toMenu(){closeModal();state='menu';keys.clear();$('menu').classList.remove('hidden');$('hud').classList.add('hidden');$('vignette').style.opacity='1';player=createPlayer(city.spawn);removePolice();addPolice(0);addPolice(1);updateBest();camera.fov=52;camera.updateProjectionMatrix();}
 function announce(text,duration=3){$('announcement').textContent=text;$('announcement').classList.remove('hidden');announcedUntil=performance.now()+duration*1000;}
-$('start-button').addEventListener('click',start);$('help-button').addEventListener('click',help);$('records-button').addEventListener('click',showRecords);$('map-button').addEventListener('click',showMap);$('pause-button').addEventListener('click',pause);
-$('modal').addEventListener('click',e=>{const action=e.target.closest('[data-action]')?.dataset.action;if(action==='close')closeModal();if(action==='start'||action==='restart')start();if(action==='resume')resume();if(action==='menu')toMenu();});
+$('start-button').addEventListener('click',start);$('help-button').addEventListener('click',help);$('records-button').addEventListener('click',()=>showRecords('global'));$('map-button').addEventListener('click',showMap);$('pause-button').addEventListener('click',pause);
+$('modal').addEventListener('click',e=>{const tab=e.target.closest('[data-records-tab]')?.dataset.recordsTab;if(tab){showRecords(tab);return;}const action=e.target.closest('[data-action]')?.dataset.action;if(action==='close')closeModal();if(action==='start'||action==='restart')start();if(action==='resume')resume();if(action==='menu')toMenu();});
 $('modal-backdrop').addEventListener('click',e=>{if(e.target===$('modal-backdrop')&&state==='menu')closeModal();});
 addEventListener('keydown',e=>{
+  // Let the ranking name field receive typing (space, WASD, Enter) instead of driving controls.
+  if(e.target instanceof HTMLInputElement&&e.key!=='Tab'&&e.key!=='Escape')return;
   const key=e.key.toLowerCase();
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();
-  if(key==='tab'&&!$('modal-backdrop').classList.contains('hidden')){const list=[...$('modal').querySelectorAll('button')];if(!list.length)return;if(e.shiftKey&&document.activeElement===list[0]){e.preventDefault();list.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===list.at(-1)){e.preventDefault();list[0].focus();}return;}
+  if(key==='tab'&&!$('modal-backdrop').classList.contains('hidden')){const list=[...$('modal').querySelectorAll('button:not([disabled]),input')];if(!list.length)return;if(e.shiftKey&&document.activeElement===list[0]){e.preventDefault();list.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===list.at(-1)){e.preventDefault();list[0].focus();}return;}
   if(e.repeat)return;
   if(key==='escape'){if(state==='playing'||state==='countdown')pause();else if(state==='paused')resume();else if(state==='menu')closeModal();return;}
   if(key==='enter'&&state==='menu'&&$('modal-backdrop').classList.contains('hidden')){e.preventDefault();start();return;}

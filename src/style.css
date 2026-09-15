@@ -26,3 +26,10 @@
 /* Ten wanted stars fit the heat panel on every screen size. */
 #stars{font-size:15px;letter-spacing:2.5px;white-space:nowrap}
 @media(max-width:600px){#stars{font-size:12px;letter-spacing:1.5px}}
+
+/* Global ranking (ssalmuk_ranking) */
+.record-tabs{display:flex;gap:4px;border-bottom:1px solid #fff4dc22;margin-top:6px}.record-tabs button{background:none;border:0;padding:10px 13px;font-size:12px;color:#b8c6b8;border-bottom:2px solid transparent;margin-bottom:-1px}.record-tabs button[aria-selected="true"]{color:var(--cream);font-weight:700;border-color:var(--orange)}
+.records-caption{margin:14px 0 0}.records-empty{padding:26px 0;text-align:center}.records-standing{font-size:12px;color:var(--orange);min-height:1.2em;margin:0}
+.record-list li.you{background:#ff804512;padding-left:10px;padding-right:10px}.record-list li em{font-style:normal;font-size:8px;font-weight:800;letter-spacing:1px;margin-left:8px;padding:1px 5px;background:var(--orange);color:var(--ink);vertical-align:1px}
+.rank-form{margin-top:26px;padding-top:22px;border-top:1px solid #fff4dc1f}.rank-form label{font-size:11px;color:#c7d0c0}.rank-form>div{display:flex;gap:8px;margin-top:9px}.rank-form input{flex:1;width:0;min-height:44px;background:#132123;border:1px solid #fff4dc2b;color:var(--cream);font:inherit;font-size:13px;padding:0 12px}.rank-form input:focus{outline:2px solid var(--orange);outline-offset:1px}.rank-form .secondary-button{padding:0 16px}.rank-form button:disabled{opacity:.55;cursor:default}
+.rank-status{font-size:12px;color:#c7d0c0;min-height:1.2em;margin:10px 0 0}.rank-status.ok{color:#9be7b5}.rank-status.error{color:#ffb08c}.rank-top{margin:8px 0 0}.rank-top li{padding:10px 0}
